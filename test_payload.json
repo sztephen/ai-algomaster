@@ -1,0 +1,13 @@
+{
+    "language": "cpp",
+    "version": "10.2.0",
+    "files": [
+        {
+            "name": "solution.cpp",
+            "content": "#include <fstream>\n#include <iostream>\n#include <vector>\n#include <string>\n\n// Rename user main so we can wrap it\n#define main _user_main\n\n#include <iostream>\n#include <cstdio>\n\nusing namespace std;\n\nint main() {\n    // Uncomment these lines in a real contest (or here if you want to test file I/O)\n    freopen(\"problem.in\", \"r\", stdin);\n    freopen(\"problem.out\", \"w\", stdout);\n    \n    int a, b;\n    if (cin >> a >> b) {\n        cout << a + b << endl;\n    }\n    return 0;\n}\n\n#undef main\n\nint main(int argc, char** argv) {\n    // 1. Create problem.in from the test case input\n    std::ofstream in(\"problem.in\");\n    in << R\"IO_TEST(3 4)\"IO_TEST\";\n    in.close();\n\n    // 2. Run user main\n    return _user_main(argc, argv);\n}\n"
+        }
+    ],
+    "stdin": "3 4",
+    "compile_timeout": 10000,
+    "run_timeout": 5000
+}
