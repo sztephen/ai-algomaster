@@ -360,6 +360,21 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  // Mark a problem as complete without running code
+  const handleMarkComplete = (index: number) => {
+    const updatedProblems = [...generatedProblems];
+    const prob = updatedProblems[index];
+    updatedProblems[index] = {
+      ...prob,
+      completed: true,
+      completedDate: prob.completedDate || new Date().toISOString()
+    };
+    setGeneratedProblems(updatedProblems);
+    if (isPresetMode) {
+      savePresetProgress(updatedProblems);
+    }
+  };
+
   const handleCursorMove = (line: number, col: number) => {
     setCursorStats({ line, col });
   };
@@ -634,7 +649,18 @@ const App: React.FC = () => {
                   <span className={`text-sm font-semibold ${prob.completed ? 'text-[#2ea043]' : 'text-[#0078d4]'}`}>
                     {prob.completed ? 'Review Solution' : 'Solve Challenge'}
                   </span>
-                  <span className="ml-2 group-hover:translate-x-1 transition-transform text-[#0078d4]">→</span>
+                  <div className="flex items-center gap-2">
+                    {!prob.completed && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleMarkComplete(idx); }}
+                        className="px-2.5 py-1 rounded text-xs font-semibold bg-[#2ea043]/15 text-[#2ea043] hover:bg-[#2ea043]/30 border border-[#2ea043]/30 hover:border-[#2ea043]/60 transition-all"
+                        title="Mark as complete without solving"
+                      >
+                        ✓ Complete
+                      </button>
+                    )}
+                    <span className="group-hover:translate-x-1 transition-transform text-[#0078d4]">→</span>
+                  </div>
                 </div>
               </div>
             ))}
