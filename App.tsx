@@ -6,6 +6,7 @@ import { Editor } from './components/Editor';
 import { ProblemDescription } from './components/ProblemDescription';
 import { ResultsPanel } from './components/ResultsPanel';
 import { PRESET_PROBLEMS } from './presetProblems';
+import { getRunnerApiUrl, saveRunnerApiUrl, DEFAULT_PISTON_API_URL, isDefaultRunnerApiUrl } from './constants';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -38,6 +39,8 @@ const App: React.FC = () => {
   const [isPresetMode, setIsPresetMode] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState(getSavedApiKey());
   const [showApiKeySection, setShowApiKeySection] = useState(!hasApiKey());
+  const [runnerApiInput, setRunnerApiInput] = useState(getRunnerApiUrl());
+  const [showRunnerApiSection, setShowRunnerApiSection] = useState(false);
 
   // LocalStorage keys
   const PRESET_PROGRESS_KEY = 'algomaster_preset_progress';
@@ -360,14 +363,14 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  // Mark a problem as complete without running code
-  const handleMarkComplete = (index: number) => {
+  const handleToggleComplete = (index: number) => {
     const updatedProblems = [...generatedProblems];
     const prob = updatedProblems[index];
+    const markCompleted = !prob.completed;
     updatedProblems[index] = {
       ...prob,
-      completed: true,
-      completedDate: prob.completedDate || new Date().toISOString()
+      completed: markCompleted,
+      completedDate: markCompleted ? (prob.completedDate || new Date().toISOString()) : undefined
     };
     setGeneratedProblems(updatedProblems);
     if (isPresetMode) {
@@ -375,9 +378,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveRunnerApi = () => {
+    const saved = saveRunnerApiUrl(runnerApiInput);
+    setRunnerApiInput(saved);
+    setError(null);
+    setShowRunnerApiSection(false);
+  };
+
+  const handleResetRunnerApi = () => {
+    const saved = saveRunnerApiUrl('');
+    setRunnerApiInput(saved);
+  };
+
   const handleCursorMove = (line: number, col: number) => {
     setCursorStats({ line, col });
   };
+
+  const activeRunnerApiUrl = getRunnerApiUrl();
+  const usingDefaultRunnerApi = isDefaultRunnerApiUrl(activeRunnerApiUrl);
 
   // --- Views ---
 
@@ -462,7 +480,7 @@ const App: React.FC = () => {
               {showApiKeySection && (
                 <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e]">
                   <p className="text-xs text-gray-500 pt-3">
-                    Required for AI-generated problems and hints. Get a key at{' '}
+                    Required for AI-generated problems, hints, and AI code simulation. Get a key at{' '}
                     <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-[#0078d4] hover:underline">openrouter.ai/keys</a>
                   </p>
                   <div className="flex gap-2">
@@ -495,6 +513,57 @@ const App: React.FC = () => {
                       Clear saved key
                     </button>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Code Runner API Section */}
+            <div className="mt-2 border border-[#3e3e3e] rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowRunnerApiSection(!showRunnerApiSection)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#333] transition"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999A5 5 0 006 9.3 4 4 0 003 15z" />
+                  </svg>
+                  <span>Code Runner API URL</span>
+                  {!usingDefaultRunnerApi && <span className="text-green-400 text-xs">Custom</span>}
+                </div>
+                <svg className={`w-4 h-4 transition-transform ${showRunnerApiSection ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showRunnerApiSection && (
+                <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e]">
+                  <p className="text-xs text-gray-500 pt-3">
+                    The public Piston endpoint became whitelist-only on February 15, 2026. Set your own Piston URL for direct code execution or as backup when AI simulation is unavailable.
+                  </p>
+                  <input
+                    type="text"
+                    value={runnerApiInput}
+                    onChange={(e) => setRunnerApiInput(e.target.value)}
+                    placeholder={DEFAULT_PISTON_API_URL}
+                    className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded px-3 py-2 text-sm text-gray-200 font-mono placeholder-gray-600 outline-none focus:ring-2 focus:ring-[#0078d4] focus:border-transparent"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveRunnerApi}
+                      disabled={!runnerApiInput.trim()}
+                      className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition"
+                    >
+                      Save URL
+                    </button>
+                    <button
+                      onClick={handleResetRunnerApi}
+                      className="px-4 py-2 bg-transparent text-gray-400 hover:text-white border border-[#3e3e3e] hover:bg-[#2d2d2d] text-sm font-medium rounded transition"
+                    >
+                      Use Default
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 break-all">
+                    Active endpoint: <code className="text-gray-400">{activeRunnerApiUrl}</code>
+                  </p>
                 </div>
               )}
             </div>
@@ -650,15 +719,17 @@ const App: React.FC = () => {
                     {prob.completed ? 'Review Solution' : 'Solve Challenge'}
                   </span>
                   <div className="flex items-center gap-2">
-                    {!prob.completed && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleMarkComplete(idx); }}
-                        className="px-2.5 py-1 rounded text-xs font-semibold bg-[#2ea043]/15 text-[#2ea043] hover:bg-[#2ea043]/30 border border-[#2ea043]/30 hover:border-[#2ea043]/60 transition-all"
-                        title="Mark as complete without solving"
-                      >
-                        ✓ Complete
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleToggleComplete(idx); }}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all
+                        ${prob.completed
+                          ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50'
+                          : 'bg-[#2ea043]/15 text-[#2ea043] border-[#2ea043]/30 hover:bg-[#2ea043]/30 hover:border-[#2ea043]/60'
+                        }`}
+                      title={prob.completed ? 'Mark this problem as incomplete' : 'Mark this problem as complete'}
+                    >
+                      {prob.completed ? 'Mark Incomplete' : 'Complete'}
+                    </button>
                     <span className="group-hover:translate-x-1 transition-transform text-[#0078d4]">→</span>
                   </div>
                 </div>
@@ -711,7 +782,12 @@ const App: React.FC = () => {
 
         {/* Left: Problem Description */}
         <div style={{ width: `${leftWidth}%` }} className="h-full min-w-[200px]">
-          {activeProblem && <ProblemDescription problem={activeProblem} />}
+          {activeProblem && (
+            <ProblemDescription
+              problem={activeProblem}
+              onToggleComplete={() => handleToggleComplete(selectedProblemIndex)}
+            />
+          )}
         </div>
 
         {/* Left Resizer */}

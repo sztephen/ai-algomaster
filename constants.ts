@@ -1,5 +1,32 @@
 // Piston API configuration for C++ code execution
-export const PISTON_API_URL = "https://emkc.org/api/v2/piston/execute";
+export const DEFAULT_PISTON_API_URL =
+  import.meta.env.VITE_PISTON_API_URL?.trim() || "https://emkc.org/api/v2/piston/execute";
+export const RUNNER_API_URL_STORAGE_KEY = "algomaster_runner_api_url";
+
+export const getRunnerApiUrl = (): string => {
+  if (typeof window === "undefined") {
+    return DEFAULT_PISTON_API_URL;
+  }
+  const saved = localStorage.getItem(RUNNER_API_URL_STORAGE_KEY)?.trim();
+  return saved || DEFAULT_PISTON_API_URL;
+};
+
+export const saveRunnerApiUrl = (url: string): string => {
+  const normalized = url.trim();
+  if (typeof window === "undefined") {
+    return normalized || DEFAULT_PISTON_API_URL;
+  }
+  if (!normalized || normalized === DEFAULT_PISTON_API_URL) {
+    localStorage.removeItem(RUNNER_API_URL_STORAGE_KEY);
+    return DEFAULT_PISTON_API_URL;
+  }
+  localStorage.setItem(RUNNER_API_URL_STORAGE_KEY, normalized);
+  return normalized;
+};
+
+export const isDefaultRunnerApiUrl = (url: string): boolean => {
+  return url.trim() === DEFAULT_PISTON_API_URL;
+};
 
 // C++ test runner template - wraps user code with a main() that runs test cases
 export const CPP_TEST_TEMPLATE = `

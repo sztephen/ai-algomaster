@@ -36,6 +36,36 @@ interface OpenRouterResponse {
     }>;
 }
 
+export interface AISimulatedCaseResult {
+    stdout: string;
+    runtimeError?: string;
+}
+
+export interface AISimulatedExecution {
+    compileError?: string;
+    caseResults: AISimulatedCaseResult[];
+}
+
+const extractJsonObjectText = (responseText: string): string => {
+    let jsonStr = responseText;
+
+    const codeBlockMatch = responseText.match(/```[\s\S]*?```/);
+    if (codeBlockMatch) {
+        const blockContent = codeBlockMatch[0]
+            .replace(/^```(?:[\w+\-.]*)?/, '')
+            .replace(/```$/, '');
+        jsonStr = blockContent;
+    }
+
+    const firstOpen = jsonStr.indexOf('{');
+    const lastClose = jsonStr.lastIndexOf('}');
+    if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+        jsonStr = jsonStr.substring(firstOpen, lastClose + 1);
+    }
+
+    return jsonStr;
+};
+
 const callOpenRouter = async (messages: OpenRouterMessage[], jsonMode: boolean = false): Promise<string> => {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -64,6 +94,55 @@ const callOpenRouter = async (messages: OpenRouterMessage[], jsonMode: boolean =
 
     const data: OpenRouterResponse = await response.json();
     return data.choices[0]?.message?.content || "";
+};
+
+export const simulateCppExecution = async (code: string, stdinCases: string[]): Promise<AISimulatedExecution> => {
+    const systemPrompt = `You are a deterministic C++17 execution simulator.
+Return ONLY valid JSON with no markdown and no extra keys.`;
+
+    const userPrompt = `
+Simulate this C++ code against each stdin case in order.
+
+C++ code:
+\`\`\`cpp
+${code}
+\`\`\`
+
+stdin_cases_json:
+${JSON.stringify(stdinCases, null, 2)}
+
+Rules:
+1. If code does not compile, return "compile_error" (string) and set "case_results" to [].
+2. If code compiles, set "compile_error" to null.
+3. For each stdin case, return one object in "case_results" with:
+   - "stdout": exact output text from stdout (string, can be empty)
+   - "runtime_error": null when none, otherwise a short error message
+4. Keep case_results length exactly equal to stdin_cases_json length when compile_error is null.
+5. No explanations. JSON only.
+
+Required output format:
+{
+  "compile_error": null,
+  "case_results": [
+    { "stdout": "text", "runtime_error": null }
+  ]
+}`;
+
+    const responseText = await callOpenRouter([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+    ], true);
+
+    const parsed = JSON.parse(extractJsonObjectText(responseText));
+    const compileError = typeof parsed.compile_error === 'string' ? parsed.compile_error : undefined;
+    const rawCaseResults = Array.isArray(parsed.case_results) ? parsed.case_results : [];
+
+    const caseResults: AISimulatedCaseResult[] = rawCaseResults.map((item: any) => ({
+        stdout: typeof item?.stdout === 'string' ? item.stdout : String(item?.stdout ?? ''),
+        runtimeError: typeof item?.runtime_error === 'string' ? item.runtime_error : undefined
+    }));
+
+    return { compileError, caseResults };
 };
 
 export const generateProblems = async (userPrompt: string): Promise<Problem[]> => {

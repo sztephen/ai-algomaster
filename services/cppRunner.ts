@@ -1,5 +1,6 @@
-import { PISTON_API_URL } from "../constants";
+import { getRunnerApiUrl } from "../constants";
 import { TestCase, RunSummary, TestResult } from "../types";
+import { hasApiKey, simulateCppExecution } from "./aiService";
 
 // Helper to format input arguments into a string stream for stdin
 const formatInput = (args: any[]): string => {
@@ -26,6 +27,72 @@ const normalizeOutput = (str: string): string[] => {
     return str.trim().split(/\s+/).filter(s => s.length > 0);
 };
 
+const tokensMatch = (actualTokens: string[], expectedTokens: string[]): boolean => {
+    if (actualTokens.length !== expectedTokens.length) return false;
+    for (let i = 0; i < actualTokens.length; i++) {
+        if (actualTokens[i] !== expectedTokens[i]) return false;
+    }
+    return true;
+};
+
+const runCppCodeWithAISimulation = async (
+    code: string,
+    testCases: TestCase[]
+): Promise<RunSummary> => {
+    const stdinCases = testCases.map(tc => formatInput(tc.input));
+    const expectedTokenSets = testCases.map(tc => normalizeOutput(formatExpected(tc.expected)));
+
+    const simulated = await simulateCppExecution(code, stdinCases);
+
+    if (simulated.compileError) {
+        return {
+            total: testCases.length,
+            passed: 0,
+            results: [],
+            error: `Compilation Error (AI Simulation):\n${simulated.compileError}`
+        };
+    }
+
+    if (simulated.caseResults.length !== testCases.length) {
+        throw new Error(
+            `AI simulation returned ${simulated.caseResults.length} test outputs for ${testCases.length} test cases.`
+        );
+    }
+
+    const results: TestResult[] = simulated.caseResults.map((caseResult, idx) => {
+        const expectedTokens = expectedTokenSets[idx];
+        const stdin = stdinCases[idx];
+
+        if (caseResult.runtimeError) {
+            return {
+                passed: false,
+                input: stdin,
+                expected: expectedTokens.join(' '),
+                actual: 'Runtime Error',
+                error: `AI Simulation: ${caseResult.runtimeError}`,
+                executionTime: 0
+            } as TestResult;
+        }
+
+        const actualTokens = normalizeOutput(caseResult.stdout || '');
+        const passed = tokensMatch(actualTokens, expectedTokens);
+
+        return {
+            passed,
+            input: stdin,
+            expected: expectedTokens.join(' '),
+            actual: actualTokens.join(' '),
+            executionTime: 0
+        } as TestResult;
+    });
+
+    return {
+        total: testCases.length,
+        passed: results.filter(r => r.passed).length,
+        results
+    };
+};
+
 export const runCppCode = async (
     code: string,
     functionName: string, // Unused in this mode, kept for interface compatibility
@@ -33,6 +100,19 @@ export const runCppCode = async (
 ): Promise<RunSummary> => {
 
     const results: TestResult[] = [];
+    const runnerApiUrl = getRunnerApiUrl();
+    const aiAvailable = hasApiKey();
+    let aiFallbackError: string | null = null;
+
+    // Prefer AI simulation if an OpenRouter key exists.
+    if (aiAvailable) {
+        try {
+            return await runCppCodeWithAISimulation(code, testCases);
+        } catch (aiError: any) {
+            aiFallbackError = aiError?.message || String(aiError);
+            console.warn("AI simulation failed, falling back to code-runner API:", aiError);
+        }
+    }
 
     // Helper to sleep
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -110,7 +190,7 @@ int main() {
 `;
             }
 
-            const response = await fetch(PISTON_API_URL, {
+            const response = await fetch(runnerApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -132,6 +212,21 @@ int main() {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                const isWhitelistError =
+                    response.status === 401 &&
+                    /whitelist only/i.test(errorText);
+
+                if (isWhitelistError) {
+                    return {
+                        total: testCases.length,
+                        passed: 0,
+                        results: [],
+                        error: aiFallbackError
+                            ? `Code runner rejected requests from this endpoint (${runnerApiUrl}). The public Piston API became whitelist-only on February 15, 2026. AI simulation also failed: ${aiFallbackError}`
+                            : `Code runner rejected requests from this endpoint (${runnerApiUrl}). The public Piston API became whitelist-only on February 15, 2026. Configure your own Piston URL in the app settings (Code Runner API URL) or add an OpenRouter API key to use AI simulation fallback.`
+                    };
+                }
+
                 results.push({
                     passed: false,
                     input: JSON.stringify(tc.input),
@@ -201,7 +296,9 @@ int main() {
                 input: JSON.stringify(tc.input),
                 expected: JSON.stringify(tc.expected),
                 actual: 'Network Error',
-                error: error.message,
+                error: aiFallbackError
+                    ? `${error.message} (AI simulation fallback also failed: ${aiFallbackError})`
+                    : error.message,
                 executionTime: 0
             } as TestResult);
         }

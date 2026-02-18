@@ -3,9 +3,10 @@ import { Problem } from '../types';
 
 interface Props {
   problem: Problem;
+  onToggleComplete: () => void;
 }
 
-export const ProblemDescription: React.FC<Props> = ({ problem }) => {
+export const ProblemDescription: React.FC<Props> = ({ problem, onToggleComplete }) => {
   const formatText = (text: string) => {
     return text.split('\n').map((line, i) => {
       // C++ Blue Headers
@@ -50,6 +51,16 @@ export const ProblemDescription: React.FC<Props> = ({ problem }) => {
               Completed {problem.completedDate ? `on ${new Date(problem.completedDate).toLocaleDateString()}` : ''}
             </span>
           )}
+          <button
+            onClick={onToggleComplete}
+            className={`ml-auto px-2.5 py-1 rounded text-[11px] font-semibold border transition-all
+              ${problem.completed
+                ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50'
+                : 'bg-[#2ea043]/15 text-[#2ea043] border-[#2ea043]/30 hover:bg-[#2ea043]/30 hover:border-[#2ea043]/60'
+              }`}
+          >
+            {problem.completed ? 'Mark Incomplete' : 'Mark Complete'}
+          </button>
         </div>
       </div>
 
