@@ -3,23 +3,28 @@ import { TestCase, RunSummary, TestResult } from "../types";
 import { hasApiKey, simulateCppExecution } from "./aiService";
 
 // Helper to format input arguments into a string stream for stdin
+const serializeInputArg = (arg: any): string => {
+    if (Array.isArray(arg)) {
+        // Include size for each dimension so nested arrays stay parseable by token-based stdin.
+        return `${arg.length} ${arg.map(serializeInputArg).join(' ')}`.trim();
+    }
+    return String(arg);
+};
+
 const formatInput = (args: any[]): string => {
-    return args.map(arg => {
-        if (Array.isArray(arg)) {
-            // New USACO convention: arrays are usually preceded by their length
-            // We'll prepend the length to be helpful
-            return `${arg.length} ${arg.join(' ')}`;
-        }
-        return String(arg);
-    }).join(' ');
+    return args.map(serializeInputArg).join(' ');
 };
 
 // Helper to format expected output into a string for comparison
-const formatExpected = (expected: any): string => {
-    if (Array.isArray(expected)) {
-        return expected.join(' ');
+const flattenExpectedTokens = (value: any): string[] => {
+    if (Array.isArray(value)) {
+        return value.flatMap(flattenExpectedTokens);
     }
-    return String(expected);
+    return [String(value)];
+};
+
+const formatExpected = (expected: any): string => {
+    return flattenExpectedTokens(expected).join(' ');
 };
 
 // Normalize output by splitting into tokens to ignore whitespace differences
@@ -242,15 +247,12 @@ int main() {
 
             // Check for compilation errors
             if (data.compile && data.compile.code !== 0) {
-                results.push({
-                    passed: false,
-                    input: JSON.stringify(tc.input),
-                    expected: JSON.stringify(tc.expected),
-                    actual: 'Compilation Error',
-                    error: data.compile.stderr || data.compile.output,
-                    executionTime: 0
-                } as TestResult);
-                continue;
+                return {
+                    total: testCases.length,
+                    passed: 0,
+                    results: [],
+                    error: `Compilation Error:\n${data.compile.stderr || data.compile.output}`
+                };
             }
 
             // Check for runtime errors
@@ -302,17 +304,6 @@ int main() {
                 executionTime: 0
             } as TestResult);
         }
-    }
-
-    // Check if any compilation error occurred
-    const compileError = results.find(r => r.actual === 'Compilation Error');
-    if (compileError) {
-        return {
-            total: testCases.length,
-            passed: 0,
-            results: [],
-            error: `Compilation Error:\n${compileError.error}`
-        };
     }
 
     const passedCount = results.filter(r => r.passed).length;

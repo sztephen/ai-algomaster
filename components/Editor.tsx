@@ -47,8 +47,9 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
   useEffect(() => {
     if (code && history.length === 1 && history[0].code === '') {
       setHistory([{ code, cursorPos: code.length }]);
+      setHistoryIndex(0);
     }
-  }, []);
+  }, [code, history]);
 
   useEffect(() => {
     const count = code.split('\n').length;

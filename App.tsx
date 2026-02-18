@@ -33,7 +33,7 @@ const App: React.FC = () => {
   // Inputs
   const [userPrompt, setUserPrompt] = useState("Give me 3 easy C++ problems about array manipulation.");
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDifficultyTab, setSelectedDifficultyTab] = useState<string>('All');
 
   const activeProblem = generatedProblems[selectedProblemIndex];
   const [isPresetMode, setIsPresetMode] = useState<boolean>(false);
@@ -54,10 +54,21 @@ const App: React.FC = () => {
       if (savedState) {
         const parsed = JSON.parse(savedState);
         if (parsed.generatedProblems && parsed.generatedProblems.length > 0) {
+          const safeIndex = Math.min(
+            Math.max(Number(parsed.selectedProblemIndex) || 0, 0),
+            parsed.generatedProblems.length - 1
+          );
+          const restoredProblem = parsed.generatedProblems[safeIndex];
+          const restoredCode =
+            parsed.userCode ||
+            restoredProblem?.userCode ||
+            restoredProblem?.starterCode ||
+            "";
+
           setGeneratedProblems(parsed.generatedProblems);
-          setSelectedProblemIndex(parsed.selectedProblemIndex || 0);
+          setSelectedProblemIndex(safeIndex);
           setIsPresetMode(!!parsed.isPresetMode);
-          setUserCode(parsed.userCode || "");
+          setUserCode(restoredCode);
           setState(AppState.SELECTING_PROBLEM); // Default to selection view if data exists
 
           // If we had an active problem in the saved state, maybe go there? 
@@ -83,8 +94,18 @@ const App: React.FC = () => {
         viewState: state
       };
       localStorage.setItem(GLOBAL_STATE_KEY, JSON.stringify(stateToSave));
+    } else {
+      localStorage.removeItem(GLOBAL_STATE_KEY);
     }
   }, [generatedProblems, selectedProblemIndex, isPresetMode, userCode, state]);
+
+  useEffect(() => {
+    if (selectedDifficultyTab === 'All') return;
+    const hasSelectedDifficulty = generatedProblems.some((prob) => prob.difficulty === selectedDifficultyTab);
+    if (!hasSelectedDifficulty) {
+      setSelectedDifficultyTab('All');
+    }
+  }, [generatedProblems, selectedDifficultyTab]);
 
   // Save preset progress to localStorage
   const savePresetProgress = (problems: Problem[]) => {
@@ -113,7 +134,9 @@ const App: React.FC = () => {
 
   // Save user code (and auto-save)
   const saveCurrentCode = () => {
-    if (activeProblem && userCode !== activeProblem.starterCode) {
+    if (!activeProblem) return;
+    const currentSavedCode = activeProblem.userCode ?? activeProblem.starterCode;
+    if (userCode !== currentSavedCode) {
       const updatedProblems = [...generatedProblems];
       const currentProb = updatedProblems[selectedProblemIndex];
       updatedProblems[selectedProblemIndex] = {
@@ -163,6 +186,7 @@ const App: React.FC = () => {
 
         if (confirm(`Load ${importedProblems.length} problems from file? Current progress will be replaced.`)) {
           setGeneratedProblems(importedProblems);
+          setSelectedDifficultyTab('All');
           // If these look like preset problems (check first title?), maybe set preset mode? 
           // For now, treat as "loaded" content. 
           // But if user wants to "Restore" preset progress, we usually expect them to be in preset mode.
@@ -184,6 +208,7 @@ const App: React.FC = () => {
       localStorage.removeItem(PRESET_PROGRESS_KEY);
       // Reload presets without saved progress
       setGeneratedProblems([...PRESET_PROBLEMS]);
+      setSelectedDifficultyTab('All');
     }
   };
 
@@ -245,6 +270,7 @@ const App: React.FC = () => {
       const problems = await generateProblems(userPrompt);
       if (problems.length === 0) throw new Error("No problems generated. Try a different prompt.");
       setGeneratedProblems(problems);
+      setSelectedDifficultyTab('All');
       setState(AppState.SELECTING_PROBLEM);
     } catch (e: any) {
       setError("Generation Failed: " + e.message);
@@ -268,6 +294,7 @@ const App: React.FC = () => {
       return { ...prob };
     });
     setGeneratedProblems(problemsWithProgress);
+    setSelectedDifficultyTab('All');
     setIsPresetMode(true);
     setState(AppState.SELECTING_PROBLEM);
     setError(null);
@@ -359,6 +386,7 @@ const App: React.FC = () => {
     }
     setState(AppState.IDLE);
     setGeneratedProblems([]);
+    setSelectedDifficultyTab('All');
     setIsPresetMode(false);
     setError(null);
   };
@@ -596,17 +624,22 @@ const App: React.FC = () => {
     const totalCount = generatedProblems.length;
     const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
-    // Filter problems by search
+    const difficultyOrder = ['Basics', 'Very Easy', 'Easy', 'Medium', 'Bronze', 'Bronze+', 'Silver', 'Gold', 'Hard', 'Expert'];
+    const availableDifficulties = Array.from(new Set(generatedProblems.map((prob) => prob.difficulty)));
+    const sortedDifficulties = [
+      ...difficultyOrder.filter((difficulty) => availableDifficulties.includes(difficulty)),
+      ...availableDifficulties
+        .filter((difficulty) => !difficultyOrder.includes(difficulty))
+        .sort((a, b) => a.localeCompare(b))
+    ];
+    const difficultyTabs = ['All', ...sortedDifficulties];
+
+    // Filter problems by selected difficulty tab
     const filteredProblems = generatedProblems
       .map((prob, idx) => ({ prob, idx }))
       .filter(({ prob }) => {
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase();
-        return (
-          prob.title.toLowerCase().includes(q) ||
-          prob.difficulty.toLowerCase().includes(q) ||
-          prob.description.toLowerCase().includes(q)
-        );
+        if (selectedDifficultyTab === 'All') return true;
+        return prob.difficulty === selectedDifficultyTab;
       });
 
     return (
@@ -649,15 +682,26 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Search & Progress */}
+          {/* Difficulty Tabs & Progress */}
           <div className="mb-6 space-y-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search problems by title, difficulty..."
-              className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none modern-input"
-            />
+            <div className="flex flex-wrap gap-2">
+              {difficultyTabs.map((difficulty) => {
+                const isActive = selectedDifficultyTab === difficulty;
+                return (
+                  <button
+                    key={difficulty}
+                    onClick={() => setSelectedDifficultyTab(difficulty)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors modern-btn
+                      ${isActive
+                        ? 'bg-[#0078d4] text-white border-[#0078d4]'
+                        : 'bg-[#1e1e1e] text-gray-300 border-[#3e3e3e] hover:bg-[#2d2d2d] hover:text-white'
+                      }`}
+                  >
+                    {difficulty}
+                  </button>
+                );
+              })}
+            </div>
             {isPresetMode && (
               <div className="relative">
                 <div className="w-full h-2 bg-[#333] rounded-full overflow-hidden">
@@ -676,8 +720,8 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
             {filteredProblems.length === 0 && (
               <div className="col-span-full text-center py-12 text-gray-500">
-                <p className="text-lg">No problems match "{searchQuery}"</p>
-                <button onClick={() => setSearchQuery('')} className="text-[#0078d4] text-sm mt-2 hover:underline">Clear search</button>
+                <p className="text-lg">No problems in "{selectedDifficultyTab}"</p>
+                <button onClick={() => setSelectedDifficultyTab('All')} className="text-[#0078d4] text-sm mt-2 hover:underline">Show all</button>
               </div>
             )}
             {filteredProblems.map(({ prob, idx }) => (
@@ -718,20 +762,7 @@ const App: React.FC = () => {
                   <span className={`text-sm font-semibold ${prob.completed ? 'text-[#2ea043]' : 'text-[#0078d4]'}`}>
                     {prob.completed ? 'Review Solution' : 'Solve Challenge'}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleToggleComplete(idx); }}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold border modern-btn
-                        ${prob.completed
-                          ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50'
-                          : 'bg-[#2ea043]/15 text-[#2ea043] border-[#2ea043]/30 hover:bg-[#2ea043]/30 hover:border-[#2ea043]/60'
-                        }`}
-                      title={prob.completed ? 'Mark this problem as incomplete' : 'Mark this problem as complete'}
-                    >
-                      {prob.completed ? 'Mark Incomplete' : 'Complete'}
-                    </button>
-                    <span className="group-hover:translate-x-1.5 transition-transform text-[#0078d4]">→</span>
-                  </div>
+                  <span className="group-hover:translate-x-1.5 transition-transform text-[#0078d4]">→</span>
                 </div>
               </div>
             ))}

@@ -270,7 +270,12 @@ Output strictly in this JSON format:
 
         // Process each problem
         const processedProblems = data.problems.map((prob: any) => {
-            const processedTestCases = prob.testCases.map((tc: any) => {
+            const rawTestCases = Array.isArray(prob.testCases) ? prob.testCases : [];
+            if (rawTestCases.length === 0) {
+                throw new Error(`Invalid response format: problem "${prob.title || 'Untitled'}" is missing testCases.`);
+            }
+
+            const processedTestCases = rawTestCases.map((tc: any) => {
                 let parsedInput = [];
                 let parsedExpected = null;
 
