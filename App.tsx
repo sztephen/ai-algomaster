@@ -349,22 +349,66 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGetHint = async (userQuestion?: string) => {
+  const handleGetHint = async (userQuestion: string) => {
     if (!activeProblem || isLoadingHint) return;
+    const trimmedQuestion = userQuestion.trim();
+    if (!trimmedQuestion) return;
+
+    const conversationSnapshot = [...hintConversation];
+    setHintConversation(prev => [...prev, { role: 'user', content: trimmedQuestion }]);
     setIsLoadingHint(true);
+
     try {
-      const hint = await getAIHint(activeProblem, userCode, hintConversation, userQuestion);
-      // Add to conversation history
-      const newMessages: HintMessage[] = [];
-      if (userQuestion) {
-        newMessages.push({ role: 'user', content: userQuestion });
-      } else if (hintConversation.length === 0) {
-        newMessages.push({ role: 'user', content: "I'm stuck. What approach should I consider?" });
-      }
-      newMessages.push({ role: 'assistant', content: hint });
-      setHintConversation(prev => [...prev, ...newMessages]);
+      const hint = await getAIHint(
+        activeProblem,
+        userCode,
+        conversationSnapshot,
+        trimmedQuestion,
+        (token) => {
+          if (!token) return;
+          setHintConversation(prev => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last || last.role !== 'assistant') {
+              next.push({ role: 'assistant', content: token });
+              return next;
+            }
+            next[next.length - 1] = {
+              ...last,
+              content: `${last.content}${token}`
+            };
+            return next;
+          });
+        }
+      );
+
+      setHintConversation(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (!last || last.role !== 'assistant') {
+          next.push({
+            role: 'assistant',
+            content: hint || 'Unable to get hint. Try again!'
+          });
+          return next;
+        }
+
+        if (hint && hint.length > last.content.length) {
+          next[next.length - 1] = { ...last, content: hint };
+        }
+        return next;
+      });
     } catch (e) {
-      setHintConversation(prev => [...prev, { role: 'assistant', content: 'Unable to get hint. Try again!' }]);
+      setHintConversation(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.role === 'assistant' && !last.content.trim()) {
+          next[next.length - 1] = { ...last, content: 'Unable to get hint. Try again!' };
+        } else {
+          next.push({ role: 'assistant', content: 'Unable to get hint. Try again!' });
+        }
+        return next;
+      });
     } finally {
       setIsLoadingHint(false);
     }

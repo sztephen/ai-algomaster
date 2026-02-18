@@ -43,6 +43,15 @@ interface CallOpenRouterOptions {
     temperature?: number;
 }
 
+interface OpenRouterStreamChunk {
+    choices?: Array<{
+        delta?: {
+            content?: string;
+        };
+        finish_reason?: string | null;
+    }>;
+}
+
 export interface AISimulatedCaseResult {
     stdout: string;
     runtimeError?: string;
@@ -111,6 +120,107 @@ const callOpenRouter = async (
 
     const data: OpenRouterResponse = await response.json();
     return data.choices[0]?.message?.content || "";
+};
+
+const callOpenRouterStream = async (
+    messages: OpenRouterMessage[],
+    onToken: (token: string) => void,
+    options: CallOpenRouterOptions = {}
+): Promise<string> => {
+    const {
+        model = DEFAULT_MODEL,
+        temperature
+    } = options;
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        throw new Error("OpenRouter API key not configured. Please enter your API key on the home screen.");
+    }
+
+    const response = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": window.location.origin,
+            "X-Title": "AI AlgoMaster"
+        },
+        body: JSON.stringify({
+            model,
+            messages,
+            stream: true,
+            ...(typeof temperature === 'number' && { temperature })
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+    }
+
+    if (!response.body) {
+        const fallback = await callOpenRouter(messages, options);
+        if (fallback) onToken(fallback);
+        return fallback;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    let fullText = "";
+    let streamDone = false;
+
+    const consumeLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data:")) return;
+
+        const payload = trimmed.slice(5).trim();
+        if (!payload) return;
+
+        if (payload === "[DONE]") {
+            streamDone = true;
+            return;
+        }
+
+        try {
+            const parsed: OpenRouterStreamChunk = JSON.parse(payload);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (typeof delta === "string" && delta.length > 0) {
+                fullText += delta;
+                onToken(delta);
+            }
+        } catch {
+            // Ignore malformed chunk lines and continue streaming.
+        }
+    };
+
+    while (!streamDone) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        let newlineIndex = buffer.indexOf("\n");
+        while (newlineIndex !== -1) {
+            const line = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+            consumeLine(line);
+            if (streamDone) break;
+            newlineIndex = buffer.indexOf("\n");
+        }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.length > 0) {
+        consumeLine(buffer);
+    }
+
+    if (!fullText.trim()) {
+        const fallback = await callOpenRouter(messages, options);
+        if (fallback) onToken(fallback);
+        return fallback;
+    }
+
+    return fullText;
 };
 
 export const simulateCppExecution = async (code: string, stdinCases: string[]): Promise<AISimulatedExecution> => {
@@ -360,14 +470,20 @@ export const getAIHint = async (
     problem: Problem,
     userCode: string,
     conversationHistory: HintMessage[] = [],
-    userQuestion?: string
+    userQuestion?: string,
+    onToken?: (token: string) => void
 ): Promise<string> => {
     const systemPrompt = `You are a straightforward coding tutor helping a student solve a C++ problem.
 
 RULES:
 - Be direct and helpful - no fluff
 - Give clear, actionable guidance
-- You can mention specific techniques, data structures (like unordered_map, vector, etc.), or STL algorithms to try
+- Focus on improving the student's CURRENT approach and current code first
+- Do not propose a different overall approach unless:
+  1) the student explicitly asks for alternatives, or
+  2) the current approach cannot work
+- If you suggest a change, tie it to the student's existing logic and point out exactly what to adjust
+- You can mention specific techniques/data structures only when they fit the student's current direction
 - If they ask a follow-up question, answer it directly
 - Don't write the full solution, but you can show small code snippets or examples if it helps explain a concept
 - Keep responses concise (2-4 sentences usually)`;
@@ -401,7 +517,12 @@ ${userCode}
     }
 
     try {
-        const response = await callOpenRouter(messages);
+        const handleToken = onToken || (() => { });
+        const response = await callOpenRouterStream(
+            messages,
+            handleToken,
+            { model: DEFAULT_MODEL, temperature: 0.2 }
+        );
         return response || "Try thinking about what data structure would help here.";
     } catch (e) {
         return "Unable to get hint. Check your approach and edge cases!";

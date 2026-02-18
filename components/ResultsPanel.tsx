@@ -6,7 +6,7 @@ interface Props {
     summary: RunSummary | null;
     hintConversation: HintMessage[];
     isLoadingHint: boolean;
-    onGetHint: (userQuestion?: string) => void;
+    onGetHint: (userQuestion: string) => void;
 }
 
 // Custom Markdown Parser (Bold + Code Blocks)
@@ -54,35 +54,17 @@ const FormattedText: React.FC<{ text: string }> = ({ text }) => {
     );
 };
 
-// Typewriter Component
-const Typewriter: React.FC<{ text: string; onComplete?: () => void }> = ({ text, onComplete }) => {
-    const [displayed, setDisplayed] = useState('');
-    const index = useRef(0);
-
-    useEffect(() => {
-        index.current = 0;
-        setDisplayed('');
-
-        const interval = setInterval(() => {
-            if (index.current < text.length) {
-                setDisplayed((prev) => prev + text.charAt(index.current));
-                index.current++;
-            } else {
-                clearInterval(interval);
-                if (onComplete) onComplete();
-            }
-        }, 10); // Speed: 10ms per char
-
-        return () => clearInterval(interval);
-    }, [text]);
-
-    return <FormattedText text={displayed} />;
-};
-
 export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoadingHint, onGetHint }) => {
     const [showAll, setShowAll] = useState(false);
     const [followUpInput, setFollowUpInput] = useState('');
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const lastMessage = hintConversation[hintConversation.length - 1];
+    const hasStreamingAssistantText = Boolean(
+        isLoadingHint &&
+        lastMessage &&
+        lastMessage.role === 'assistant' &&
+        lastMessage.content.trim().length > 0
+    );
 
     // Reset showAll when summary changes (new run)
     // Auto-expand if there are failures
@@ -99,10 +81,10 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
     }, [hintConversation, isLoadingHint]);
 
     const handleSendFollowUp = () => {
-        if (followUpInput.trim() && !isLoadingHint) {
-            onGetHint(followUpInput.trim());
-            setFollowUpInput('');
-        }
+        const question = followUpInput.trim();
+        if (!question || isLoadingHint) return;
+        onGetHint(question);
+        setFollowUpInput('');
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -159,19 +141,6 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                         </svg>
                         AI Hints
                     </h3>
-                    {hintConversation.length === 0 && (
-                        <button
-                            onClick={() => onGetHint()}
-                            disabled={isLoadingHint}
-                            className={`px-3 py-1.5 rounded text-sm font-medium modern-btn
-                ${isLoadingHint
-                                    ? 'bg-[#333] text-gray-500 cursor-not-allowed'
-                                    : 'bg-[#ffd343]/20 text-[#ffd343] hover:bg-[#ffd343]/30 border border-[#ffd343]/30'
-                                }`}
-                        >
-                            {isLoadingHint ? 'Starting...' : 'Get Hint'}
-                        </button>
-                    )}
                 </div>
 
                 {/* Chat Messages */}
@@ -179,13 +148,10 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                     {hintConversation.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-2 opacity-60">
                             <span className="text-4xl opacity-20">?</span>
-                            <p className="text-sm">Need help? Ask AI.</p>
+                            <p className="text-sm">Ask for help on your current code.</p>
                         </div>
                     ) : (
                         hintConversation.map((msg, idx) => {
-                            const isLastMessage = idx === hintConversation.length - 1;
-                            const shouldTypewrite = isLastMessage && msg.role === 'assistant';
-
                             return (
                                 <div
                                     key={idx}
@@ -198,11 +164,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                                                 : 'bg-[#333] text-[#e0e0e0] rounded-bl-none border border-[#444]'
                                             }`}
                                     >
-                                        {shouldTypewrite ? (
-                                            <Typewriter text={msg.content} onComplete={() => { }} />
-                                        ) : (
-                                            <FormattedText text={msg.content} />
-                                        )}
+                                        <FormattedText text={msg.content} />
                                     </div>
                                 </div>
                             );
@@ -210,7 +172,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                     )}
 
                     {/* Thinking Indicator */}
-                    {isLoadingHint && (
+                    {isLoadingHint && !hasStreamingAssistantText && (
                         <div className="flex justify-start thinking-indicator message-in">
                             <div className="bg-[#333] border border-[#444] rounded-xl rounded-bl-none p-3 flex items-center gap-2">
                                 <div className="flex gap-1">
@@ -225,35 +187,33 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                     <div ref={chatEndRef} />
                 </div>
 
-                {/* Follow-up Input */}
-                {hintConversation.length > 0 && (
-                    <div className="p-3 border-t border-[#333] bg-[#252526]/95 backdrop-blur-sm">
-                        <div className="flex gap-2 relative">
-                            <input
-                                type="text"
-                                value={followUpInput}
-                                onChange={(e) => setFollowUpInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Ask a follow-up question..."
-                                className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded-full px-4 py-2 text-sm text-[#cccccc] placeholder-gray-500 outline-none modern-input"
-                                disabled={isLoadingHint}
-                            />
-                            <button
-                                onClick={handleSendFollowUp}
-                                disabled={isLoadingHint || !followUpInput.trim()}
-                                className={`px-4 py-2 rounded-full text-sm font-bold modern-btn
+                {/* Hint Input */}
+                <div className="p-3 border-t border-[#333] bg-[#252526]/95 backdrop-blur-sm">
+                    <div className="flex gap-2 relative">
+                        <input
+                            type="text"
+                            value={followUpInput}
+                            onChange={(e) => setFollowUpInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Describe where your current approach is stuck..."
+                            className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded-full px-4 py-2 text-sm text-[#cccccc] placeholder-gray-500 outline-none modern-input"
+                            disabled={isLoadingHint}
+                        />
+                        <button
+                            onClick={handleSendFollowUp}
+                            disabled={isLoadingHint || !followUpInput.trim()}
+                            className={`px-4 py-2 rounded-full text-sm font-bold modern-btn
                   ${isLoadingHint || !followUpInput.trim()
                                         ? 'bg-[#333] text-gray-500 cursor-not-allowed'
                                         : 'bg-[#ffd343] text-black hover:bg-[#e5c23d] shadow-lg'
                                     }`}
-                            >
-                                <svg className="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                            </button>
-                        </div>
+                        >
+                            <svg className="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                        </button>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Test Case Details - Collapsible at bottom */}
