@@ -1,7 +1,8 @@
 import { Problem, RunSummary } from "../types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "google/gemini-3-pro-preview";
+const DEFAULT_MODEL = "google/gemini-3-pro-preview";
+const EXECUTION_SIM_MODEL = "google/gemini-3-flash-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 
 const getApiKey = (): string => {
@@ -36,6 +37,12 @@ interface OpenRouterResponse {
     }>;
 }
 
+interface CallOpenRouterOptions {
+    jsonMode?: boolean;
+    model?: string;
+    temperature?: number;
+}
+
 export interface AISimulatedCaseResult {
     stdout: string;
     runtimeError?: string;
@@ -66,7 +73,16 @@ const extractJsonObjectText = (responseText: string): string => {
     return jsonStr;
 };
 
-const callOpenRouter = async (messages: OpenRouterMessage[], jsonMode: boolean = false): Promise<string> => {
+const callOpenRouter = async (
+    messages: OpenRouterMessage[],
+    options: CallOpenRouterOptions = {}
+): Promise<string> => {
+    const {
+        jsonMode = false,
+        model = DEFAULT_MODEL,
+        temperature
+    } = options;
+
     const apiKey = getApiKey();
     if (!apiKey) {
         throw new Error("OpenRouter API key not configured. Please enter your API key on the home screen.");
@@ -81,8 +97,9 @@ const callOpenRouter = async (messages: OpenRouterMessage[], jsonMode: boolean =
             "X-Title": "AI AlgoMaster"
         },
         body: JSON.stringify({
-            model: MODEL,
+            model,
             messages,
+            ...(typeof temperature === 'number' && { temperature }),
             ...(jsonMode && { response_format: { type: "json_object" } })
         })
     });
@@ -97,7 +114,7 @@ const callOpenRouter = async (messages: OpenRouterMessage[], jsonMode: boolean =
 };
 
 export const simulateCppExecution = async (code: string, stdinCases: string[]): Promise<AISimulatedExecution> => {
-    const systemPrompt = `You are a deterministic C++17 execution simulator.
+    const systemPrompt = `You are a strict and deterministic C++17 compiler/runtime simulator.
 Return ONLY valid JSON with no markdown and no extra keys.`;
 
     const userPrompt = `
@@ -112,13 +129,20 @@ stdin_cases_json:
 ${JSON.stringify(stdinCases, null, 2)}
 
 Rules:
-1. If code does not compile, return "compile_error" (string) and set "case_results" to [].
-2. If code compiles, set "compile_error" to null.
-3. For each stdin case, return one object in "case_results" with:
+1. First do compile checking exactly like a strict C++17 compiler:
+   - Syntax/parsing errors
+   - Missing symbols/includes
+   - Type errors and signature mismatches
+   - Any other compile-time error
+2. If code does not compile, return "compile_error" (string) and set "case_results" to [].
+3. If code compiles, set "compile_error" to null.
+4. For each stdin case, return one object in "case_results" with:
    - "stdout": exact output text from stdout (string, can be empty)
    - "runtime_error": null when none, otherwise a short error message
-4. Keep case_results length exactly equal to stdin_cases_json length when compile_error is null.
-5. No explanations. JSON only.
+5. Simulate stdin/stdout behavior faithfully (token parsing like std::cin >> by whitespace).
+6. Keep case_results length exactly equal to stdin_cases_json length when compile_error is null.
+7. Be conservative: if uncertain about a case, prefer runtime_error over invented stdout.
+8. No explanations. JSON only.
 
 Required output format:
 {
@@ -128,10 +152,36 @@ Required output format:
   ]
 }`;
 
-    const responseText = await callOpenRouter([
+    const messages: OpenRouterMessage[] = [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
-    ], true);
+    ];
+
+    let responseText = "";
+    try {
+        responseText = await callOpenRouter(messages, {
+            jsonMode: true,
+            model: EXECUTION_SIM_MODEL,
+            temperature: 0
+        });
+    } catch (flashError: any) {
+        const msg = String(flashError?.message || flashError).toLowerCase();
+        const shouldFallbackModel =
+            msg.includes("model") ||
+            msg.includes("unsupported") ||
+            msg.includes("not found") ||
+            msg.includes("unavailable");
+
+        if (!shouldFallbackModel) {
+            throw flashError;
+        }
+
+        responseText = await callOpenRouter(messages, {
+            jsonMode: true,
+            model: DEFAULT_MODEL,
+            temperature: 0
+        });
+    }
 
     const parsed = JSON.parse(extractJsonObjectText(responseText));
     const compileError = typeof parsed.compile_error === 'string' ? parsed.compile_error : undefined;
@@ -141,6 +191,10 @@ Required output format:
         stdout: typeof item?.stdout === 'string' ? item.stdout : String(item?.stdout ?? ''),
         runtimeError: typeof item?.runtime_error === 'string' ? item.runtime_error : undefined
     }));
+
+    if (!compileError && stdinCases.length > 0 && caseResults.length === 0) {
+        throw new Error("AI simulation produced no case outputs.");
+    }
 
     return { compileError, caseResults };
 };
@@ -185,7 +239,7 @@ Output strictly in this JSON format:
         const responseText = await callOpenRouter([
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessage }
-        ], true);
+        ], { jsonMode: true });
 
         // Extract JSON from response
         let jsonStr = responseText;

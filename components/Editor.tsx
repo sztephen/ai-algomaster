@@ -316,9 +316,9 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full bg-[#1e1e1e]/90 backdrop-blur-sm">
       {/* Editor Tab Bar */}
-      <div className="flex items-center justify-between bg-[#252526] border-b border-[#333] z-10">
+      <div className="flex items-center justify-between bg-[#252526]/95 border-b border-[#333] z-10">
         <div className="flex">
           <div className="px-4 py-2 bg-[#1e1e1e] border-t-2 border-[#0078d4] text-[#cccccc] text-sm font-medium flex items-center gap-2">
             <span className="text-[#0078d4] font-bold">C++</span>
@@ -336,7 +336,7 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
                   onChange(starterCode);
                 }
               }}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-sm text-[11px] font-medium text-gray-400 hover:text-white hover:bg-[#333] transition"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-sm text-[11px] font-medium text-gray-400 hover:text-white hover:bg-[#333] modern-btn"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -347,7 +347,7 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
           <button
             onClick={onRun}
             disabled={isRunning}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-bold transition-all
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-bold modern-btn
                 ${isRunning
                 ? 'bg-[#333] text-gray-500 cursor-not-allowed'
                 : 'bg-[#2ea043] hover:bg-[#238636] text-white shadow-sm'}`}
@@ -366,7 +366,7 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
         {/* Line Numbers - Larger text */}
         <div
           ref={linesRef}
-          className="w-14 bg-[#1e1e1e] text-[#858585] text-right pr-3 py-4 select-none code-font text-base leading-7 overflow-hidden"
+          className="w-14 bg-[#1a1f27] text-[#858585] text-right pr-3 py-4 select-none code-font text-base leading-7 overflow-hidden"
         >
           {lines.map(line => (
             <div key={line}>{line}</div>
@@ -380,7 +380,7 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
             ref={preRef}
             aria-hidden="true"
             className="absolute inset-0 m-0 py-4 px-3 bg-transparent pointer-events-none code-font text-base leading-7 overflow-hidden whitespace-pre"
-            style={{ fontFamily: "'Fira Code', 'Courier New', Courier, monospace" }}
+            style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', Courier, monospace" }}
           >
             <code
               dangerouslySetInnerHTML={{ __html: highlightedCode }}
@@ -404,7 +404,7 @@ export const Editor: React.FC<Props> = ({ code, onChange, onRun, isRunning, onCu
             autoCorrect="off"
             style={{
               color: 'transparent',
-              fontFamily: "'Fira Code', 'Courier New', Courier, monospace",
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', Courier, monospace",
               caretColor: 'white'
             }}
           />

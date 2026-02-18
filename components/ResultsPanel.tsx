@@ -124,7 +124,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
         }
         const allPassed = summary.passed === summary.total;
         return (
-            <div className={`flex items-center gap-3 p-3 rounded border animate-fade-in-up transition-all ${allPassed
+            <div className={`flex items-center gap-3 p-3 rounded border animate-fade-in-up ${allPassed
                 ? 'bg-[#2ea043]/10 border-[#2ea043]/30'
                 : 'bg-[#ffd343]/10 border-[#ffd343]/30'
                 }`}>
@@ -134,13 +134,13 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                 <span className="text-gray-400 text-sm">
                     test cases passed
                 </span>
-                {allPassed && <span className="text-[#2ea043] animate-bounce">✓</span>}
+                {allPassed && <span className="text-[#2ea043] subtle-status">✓</span>}
             </div>
         );
     };
 
     return (
-        <div className="h-full flex flex-col bg-[#252526] overflow-hidden">
+        <div className="h-full flex flex-col bg-[#252526]/95 backdrop-blur-sm overflow-hidden">
             {/* Test Results Summary - Always at top */}
             <div className="p-4 border-b border-[#333] flex-shrink-0">
                 <h2 className="text-xs font-bold text-[#cccccc] uppercase tracking-wider mb-3">Results</h2>
@@ -150,9 +150,9 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
             </div>
 
             {/* AI Hint Chat Section */}
-            <div className="flex-1 flex flex-col min-h-0 bg-[#1e1e1e] relative">
+            <div className="flex-1 flex flex-col min-h-0 bg-[#1e1e1e]/95 relative">
                 {/* Header */}
-                <div className="p-3 border-b border-[#333] bg-[#252526] flex items-center justify-between z-10 shadow-sm">
+                <div className="p-3 border-b border-[#333] bg-[#252526]/95 backdrop-blur-sm flex items-center justify-between z-10 shadow-sm">
                     <h3 className="text-[#ffd343] text-sm font-bold flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -163,7 +163,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                         <button
                             onClick={() => onGetHint()}
                             disabled={isLoadingHint}
-                            className={`px-3 py-1.5 rounded text-sm font-medium transition-all transform hover:scale-105
+                            className={`px-3 py-1.5 rounded text-sm font-medium modern-btn
                 ${isLoadingHint
                                     ? 'bg-[#333] text-gray-500 cursor-not-allowed'
                                     : 'bg-[#ffd343]/20 text-[#ffd343] hover:bg-[#ffd343]/30 border border-[#ffd343]/30'
@@ -189,7 +189,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                             return (
                                 <div
                                     key={idx}
-                                    className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex w-full message-in ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div
                                         className={`max-w-[90%] p-3 rounded-xl text-sm leading-relaxed shadow-sm
@@ -211,12 +211,12 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
 
                     {/* Thinking Indicator */}
                     {isLoadingHint && (
-                        <div className="flex justify-start animate-pulse">
+                        <div className="flex justify-start thinking-indicator message-in">
                             <div className="bg-[#333] border border-[#444] rounded-xl rounded-bl-none p-3 flex items-center gap-2">
                                 <div className="flex gap-1">
-                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full typing-dot" style={{ animationDelay: '0ms' }}></div>
+                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full typing-dot" style={{ animationDelay: '120ms' }}></div>
+                                    <div className="w-2 h-2 bg-[#ffd343] rounded-full typing-dot" style={{ animationDelay: '240ms' }}></div>
                                 </div>
                                 <span className="text-xs text-gray-400 font-medium ml-1">Thinking...</span>
                             </div>
@@ -227,7 +227,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
 
                 {/* Follow-up Input */}
                 {hintConversation.length > 0 && (
-                    <div className="p-3 border-t border-[#333] bg-[#252526]">
+                    <div className="p-3 border-t border-[#333] bg-[#252526]/95 backdrop-blur-sm">
                         <div className="flex gap-2 relative">
                             <input
                                 type="text"
@@ -235,13 +235,13 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                                 onChange={(e) => setFollowUpInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Ask a follow-up question..."
-                                className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded-full px-4 py-2 text-sm text-[#cccccc] placeholder-gray-500 outline-none focus:border-[#ffd343]/50 focus:ring-1 focus:ring-[#ffd343]/20 transition-all"
+                                className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded-full px-4 py-2 text-sm text-[#cccccc] placeholder-gray-500 outline-none modern-input"
                                 disabled={isLoadingHint}
                             />
                             <button
                                 onClick={handleSendFollowUp}
                                 disabled={isLoadingHint || !followUpInput.trim()}
-                                className={`px-4 py-2 rounded-full text-sm font-bold transition-all transform active:scale-95
+                                className={`px-4 py-2 rounded-full text-sm font-bold modern-btn
                   ${isLoadingHint || !followUpInput.trim()
                                         ? 'bg-[#333] text-gray-500 cursor-not-allowed'
                                         : 'bg-[#ffd343] text-black hover:bg-[#e5c23d] shadow-lg'
@@ -261,7 +261,7 @@ export const ResultsPanel: React.FC<Props> = ({ summary, hintConversation, isLoa
                 <div className="border-t border-[#333] max-h-[40%] overflow-y-auto bg-[#1e1e1e]">
                     <button
                         onClick={() => setShowAll(!showAll)}
-                        className="w-full p-2 text-xs text-gray-400 hover:bg-[#333] flex items-center justify-center gap-2 transition-colors"
+                        className="w-full p-2 text-xs text-gray-400 hover:bg-[#333] flex items-center justify-center gap-2 modern-btn"
                     >
                         {showAll ? 'Hide' : 'Show'} test case details
                         <svg
@@ -288,10 +288,10 @@ const TestCaseRow: React.FC<{ result: TestResult; index: number }> = ({ result, 
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <div className={`border rounded-md text-xs transition-all ${result.passed ? 'border-[#2ea043]/20 bg-[#2ea043]/5' : 'border-[#f85149]/20 bg-[#f85149]/5'}`}>
+        <div className={`border rounded-md text-xs ${result.passed ? 'border-[#2ea043]/20 bg-[#2ea043]/5' : 'border-[#f85149]/20 bg-[#f85149]/5'}`}>
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="w-full flex items-center justify-between p-2 text-left hover:bg-white/5 transition-colors rounded-t-md"
+                className="w-full flex items-center justify-between p-2 text-left hover:bg-white/5 rounded-t-md modern-btn"
             >
                 <div className="flex items-center gap-2">
                     <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold shadow-sm ${result.passed ? 'bg-[#2ea043] text-white' : 'bg-[#f85149] text-white'}`}>

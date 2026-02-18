@@ -30,8 +30,8 @@ export const ProblemDescription: React.FC<Props> = ({ problem, onToggleComplete 
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#252526]">
-      <div className="p-4 border-b border-[#333] bg-[#252526] sticky top-0 z-10 flex-shrink-0">
+    <div className="h-full flex flex-col bg-[#252526]/95 backdrop-blur-sm">
+      <div className="p-4 border-b border-[#333] bg-[#252526]/95 backdrop-blur-sm sticky top-0 z-10 flex-shrink-0">
         <h1 className="text-lg font-bold text-[#cccccc] mb-2">{problem.title}</h1>
         <div className="flex items-center gap-3">
           <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border 
@@ -53,7 +53,7 @@ export const ProblemDescription: React.FC<Props> = ({ problem, onToggleComplete 
           )}
           <button
             onClick={onToggleComplete}
-            className={`ml-auto px-2.5 py-1 rounded text-[11px] font-semibold border transition-all
+            className={`ml-auto px-2.5 py-1 rounded text-[11px] font-semibold border modern-btn
               ${problem.completed
                 ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50'
                 : 'bg-[#2ea043]/15 text-[#2ea043] border-[#2ea043]/30 hover:bg-[#2ea043]/30 hover:border-[#2ea043]/60'

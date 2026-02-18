@@ -401,14 +401,14 @@ const App: React.FC = () => {
 
   if (state === AppState.IDLE) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#1e1e1e] p-4 relative overflow-hidden">
+      <div className="h-full flex items-center justify-center modern-ambient p-4 relative overflow-hidden animate-fade-in">
         {/* C++ inspired Background Shapes */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#0078d4] opacity-5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00bcf2] opacity-5 rounded-full blur-3xl"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#0078d4] opacity-10 rounded-full blur-3xl ambient-orb"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#00bcf2] opacity-10 rounded-full blur-3xl ambient-orb alt"></div>
 
-        <div className="max-w-2xl w-full bg-[#2d2d2d] border border-[#3e3e3e] rounded-xl p-8 shadow-2xl relative z-10">
+        <div className="max-w-2xl w-full rounded-xl p-8 relative z-10 surface-panel animate-fade-in-up">
           <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold mb-4 flex items-center justify-center gap-4">
+            <h1 className="ui-title text-5xl font-bold mb-4 flex items-center justify-center gap-4">
               <span className="text-[#0078d4]">AI</span>
               <span className="text-[#00bcf2]">AlgoMaster</span>
             </h1>
@@ -425,7 +425,7 @@ const App: React.FC = () => {
               <textarea
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
-                className="w-full h-32 bg-[#1e1e1e] border border-[#3e3e3e] rounded-lg p-4 text-gray-200 focus:ring-2 focus:ring-[#0078d4] focus:border-transparent outline-none resize-none text-lg leading-relaxed placeholder-gray-600 code-font shadow-inner"
+                className="w-full h-32 bg-[#1a1f28] border border-[#3e3e3e] rounded-lg p-4 text-gray-200 outline-none resize-none text-lg leading-relaxed placeholder-gray-600 code-font shadow-inner modern-input"
                 placeholder="e.g. 'Give me 5 vector problems ranging from easy to hard' or 'Create a very hard dynamic programming challenge about graphs'"
               />
             </div>
@@ -434,7 +434,7 @@ const App: React.FC = () => {
 
             <button
               onClick={handleGenerate}
-              className="w-full bg-[#0078d4] hover:bg-[#005a9e] text-white font-bold py-4 rounded-lg transition-all transform active:scale-[0.99] shadow-lg text-lg flex items-center justify-center gap-2"
+              className="w-full bg-[#0078d4] hover:bg-[#005a9e] text-white font-bold py-4 rounded-lg shadow-lg text-lg flex items-center justify-center gap-2 modern-btn modern-btn-primary"
             >
               <span>Generate Challenges</span>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
@@ -442,7 +442,7 @@ const App: React.FC = () => {
 
             <button
               onClick={handleImportProgress}
-              className="w-full bg-transparent hover:bg-[#2d2d2d] text-gray-400 hover:text-white font-medium py-3 rounded-lg transition-all border border-[#3e3e3e] flex items-center justify-center gap-2"
+              className="w-full bg-transparent hover:bg-[#2d2d2d] text-gray-400 hover:text-white font-medium py-3 rounded-lg border border-[#3e3e3e] flex items-center justify-center gap-2 modern-btn modern-btn-outline"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -452,7 +452,7 @@ const App: React.FC = () => {
 
             <button
               onClick={handleLoadPresets}
-              className="w-full bg-[#00bcf2] hover:bg-[#00a4d6] text-[#1e1e1e] font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+              className="w-full bg-[#00bcf2] hover:bg-[#00a4d6] text-[#1e1e1e] font-bold py-3 rounded-lg flex items-center justify-center gap-2 modern-btn modern-btn-accent"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -461,10 +461,10 @@ const App: React.FC = () => {
             </button>
 
             {/* API Key Section */}
-            <div className="mt-2 border border-[#3e3e3e] rounded-lg overflow-hidden">
+            <div className="mt-2 border border-[#3e3e3e] rounded-lg overflow-hidden bg-[#20252f]/60">
               <button
                 onClick={() => setShowApiKeySection(!showApiKeySection)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#333] transition"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#333] modern-btn"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,7 +478,7 @@ const App: React.FC = () => {
                 </svg>
               </button>
               {showApiKeySection && (
-                <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e]">
+                <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e] animate-fade-in-down">
                   <p className="text-xs text-gray-500 pt-3">
                     Required for AI-generated problems, hints, and AI code simulation. Get a key at{' '}
                     <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-[#0078d4] hover:underline">openrouter.ai/keys</a>
@@ -489,7 +489,7 @@ const App: React.FC = () => {
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
                       placeholder="sk-or-v1-..."
-                      className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded px-3 py-2 text-sm text-gray-200 font-mono placeholder-gray-600 outline-none focus:ring-2 focus:ring-[#0078d4] focus:border-transparent"
+                      className="flex-1 bg-[#1e1e1e] border border-[#3e3e3e] rounded px-3 py-2 text-sm text-gray-200 font-mono placeholder-gray-600 outline-none modern-input"
                     />
                     <button
                       onClick={() => {
@@ -497,7 +497,7 @@ const App: React.FC = () => {
                         setShowApiKeySection(false);
                       }}
                       disabled={!apiKeyInput.trim()}
-                      className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition"
+                      className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded modern-btn modern-btn-primary"
                     >
                       Save
                     </button>
@@ -518,10 +518,10 @@ const App: React.FC = () => {
             </div>
 
             {/* Code Runner API Section */}
-            <div className="mt-2 border border-[#3e3e3e] rounded-lg overflow-hidden">
+            <div className="mt-2 border border-[#3e3e3e] rounded-lg overflow-hidden bg-[#20252f]/60">
               <button
                 onClick={() => setShowRunnerApiSection(!showRunnerApiSection)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#333] transition"
+                className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-[#333] modern-btn"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -535,7 +535,7 @@ const App: React.FC = () => {
                 </svg>
               </button>
               {showRunnerApiSection && (
-                <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e]">
+                <div className="px-4 pb-4 space-y-3 border-t border-[#3e3e3e] animate-fade-in-down">
                   <p className="text-xs text-gray-500 pt-3">
                     The public Piston endpoint became whitelist-only on February 15, 2026. Set your own Piston URL for direct code execution or as backup when AI simulation is unavailable.
                   </p>
@@ -544,19 +544,19 @@ const App: React.FC = () => {
                     value={runnerApiInput}
                     onChange={(e) => setRunnerApiInput(e.target.value)}
                     placeholder={DEFAULT_PISTON_API_URL}
-                    className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded px-3 py-2 text-sm text-gray-200 font-mono placeholder-gray-600 outline-none focus:ring-2 focus:ring-[#0078d4] focus:border-transparent"
+                    className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded px-3 py-2 text-sm text-gray-200 font-mono placeholder-gray-600 outline-none modern-input"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveRunnerApi}
                       disabled={!runnerApiInput.trim()}
-                      className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition"
+                      className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded modern-btn modern-btn-primary"
                     >
                       Save URL
                     </button>
                     <button
                       onClick={handleResetRunnerApi}
-                      className="px-4 py-2 bg-transparent text-gray-400 hover:text-white border border-[#3e3e3e] hover:bg-[#2d2d2d] text-sm font-medium rounded transition"
+                      className="px-4 py-2 bg-transparent text-gray-400 hover:text-white border border-[#3e3e3e] hover:bg-[#2d2d2d] text-sm font-medium rounded modern-btn modern-btn-outline"
                     >
                       Use Default
                     </button>
@@ -575,16 +575,16 @@ const App: React.FC = () => {
 
   if (state === AppState.GENERATING_PROBLEM) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-[#1e1e1e] text-white space-y-8">
-        <div className="relative w-32 h-32">
+      <div className="h-full flex flex-col items-center justify-center modern-ambient text-white space-y-8 animate-fade-in">
+        <div className="relative w-32 h-32 animate-fade-in-up">
           <div className="absolute inset-0 border-4 border-[#0078d4]/30 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-[#00bcf2] rounded-full border-t-transparent animate-spin"></div>
+          <div className="absolute inset-0 border-4 border-[#00bcf2] rounded-full border-t-transparent animate-spin" style={{ animationDuration: '1.4s' }}></div>
           <div className="absolute inset-0 flex items-center justify-center text-[#0078d4] text-3xl font-bold">
             C++
           </div>
         </div>
         <div className="text-center max-w-md">
-          <h2 className="text-3xl font-bold animate-pulse text-[#0078d4]">Crafting Challenges...</h2>
+          <h2 className="text-3xl font-bold text-[#0078d4] ui-title animate-fade-in-up">Crafting Challenges...</h2>
           <p className="text-gray-500 mt-4 text-lg">AI is interpreting your request and designing C++ solutions.</p>
         </div>
       </div>
@@ -610,10 +610,10 @@ const App: React.FC = () => {
       });
 
     return (
-      <div className="h-full flex flex-col bg-[#1e1e1e] text-white p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto w-full flex flex-col h-full">
+      <div className="h-full flex flex-col modern-ambient text-white p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto w-full flex flex-col h-full animate-fade-in">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold flex gap-2">
+            <h2 className="text-3xl font-bold flex gap-2 ui-title">
               <span className="text-[#0078d4]">Select</span>
               <span className="text-[#00bcf2]">Challenge</span>
               {isPresetMode && (
@@ -625,7 +625,7 @@ const App: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={handleExportProgress}
-                className="text-[#2ea043] hover:text-white px-4 py-2 rounded border border-[#2ea043]/50 hover:bg-[#2ea043]/20 transition flex items-center gap-2"
+                className="text-[#2ea043] hover:text-white px-4 py-2 rounded border border-[#2ea043]/50 hover:bg-[#2ea043]/20 flex items-center gap-2 modern-btn modern-btn-outline"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -635,7 +635,7 @@ const App: React.FC = () => {
               {isPresetMode && (
                 <button
                   onClick={handleResetProgress}
-                  className="text-red-400 hover:text-white px-4 py-2 rounded border border-red-500/50 hover:bg-red-500/20 transition flex items-center gap-2"
+                  className="text-red-400 hover:text-white px-4 py-2 rounded border border-red-500/50 hover:bg-red-500/20 flex items-center gap-2 modern-btn modern-btn-outline"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -643,7 +643,7 @@ const App: React.FC = () => {
                   Reset
                 </button>
               )}
-              <button onClick={handleBackToHome} className="text-gray-400 hover:text-white px-4 py-2 rounded border border-[#3e3e3e] hover:bg-[#2d2d2d] transition">
+              <button onClick={handleBackToHome} className="text-gray-400 hover:text-white px-4 py-2 rounded border border-[#3e3e3e] hover:bg-[#2d2d2d] modern-btn modern-btn-outline">
                 Start Over
               </button>
             </div>
@@ -656,13 +656,13 @@ const App: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search problems by title, difficulty..."
-              className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none focus:ring-2 focus:ring-[#0078d4] focus:border-transparent transition"
+              className="w-full bg-[#1e1e1e] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 outline-none modern-input"
             />
             {isPresetMode && (
               <div className="relative">
                 <div className="w-full h-2 bg-[#333] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-[#0078d4] to-[#2ea043] rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-[#0078d4] to-[#2ea043] rounded-full transition-all duration-700"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -685,7 +685,7 @@ const App: React.FC = () => {
                 key={idx}
                 onClick={() => selectProblem(idx)}
                 style={{ animationDelay: `${idx * 0.05}s` }}
-                className="bg-[#252526] border border-[#3e3e3e] rounded-lg p-6 cursor-pointer hover:border-[#0078d4] hover:bg-[#2d2d2d] transition-all group relative overflow-hidden shadow-lg animate-fade-in-up"
+                className="bg-[#252526] border border-[#3e3e3e] rounded-lg p-6 cursor-pointer hover:border-[#0078d4] hover:bg-[#2d2d2d] group relative overflow-hidden shadow-lg animate-fade-in-up problem-card"
               >
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                   <span className="text-6xl font-bold text-[#0078d4]">{idx + 1}</span>
@@ -721,7 +721,7 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleToggleComplete(idx); }}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all
+                      className={`px-2.5 py-1 rounded text-xs font-semibold border modern-btn
                         ${prob.completed
                           ? 'bg-red-500/10 text-red-300 border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50'
                           : 'bg-[#2ea043]/15 text-[#2ea043] border-[#2ea043]/30 hover:bg-[#2ea043]/30 hover:border-[#2ea043]/60'
@@ -730,7 +730,7 @@ const App: React.FC = () => {
                     >
                       {prob.completed ? 'Mark Incomplete' : 'Complete'}
                     </button>
-                    <span className="group-hover:translate-x-1 transition-transform text-[#0078d4]">→</span>
+                    <span className="group-hover:translate-x-1.5 transition-transform text-[#0078d4]">→</span>
                   </div>
                 </div>
               </div>
@@ -743,23 +743,23 @@ const App: React.FC = () => {
 
   // Main Coding View
   return (
-    <div className="h-full flex flex-col bg-[#1e1e1e]">
+    <div className="h-full flex flex-col bg-[#1e1e1e] modern-ambient">
       {/* Invisible overlay for smoother dragging */}
       <div id="drag-overlay" className="fixed inset-0 z-50 hidden cursor-col-resize"></div>
 
       {/* Header */}
-      <header className="h-12 border-b border-[#333] bg-[#252526] flex items-center justify-between px-4 shrink-0 select-none">
+      <header className="h-12 border-b border-[#333] bg-[#252526]/95 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 select-none">
         <div className="flex items-center gap-4">
           <button
             onClick={handleBackToSelection}
-            className="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-medium hover:bg-[#333] px-2 py-1 rounded transition"
+            className="text-gray-400 hover:text-white flex items-center gap-1 text-xs font-medium hover:bg-[#333] px-2 py-1 rounded modern-btn"
           >
             ← Problems
           </button>
           <div className="h-4 w-px bg-[#333]"></div>
           <div className="flex items-center gap-2">
             <span className="text-[#0078d4] font-bold text-lg">C++</span>
-            <span className="font-bold text-sm text-[#cccccc]">
+            <span className="font-bold text-sm text-[#cccccc] ui-title">
               {activeProblem?.title}
             </span>
           </div>
@@ -827,7 +827,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Footer Status Bar - VS Code Style */}
-      <footer className="h-6 bg-[#0078d4] text-white flex items-center px-2 text-xs select-none">
+      <footer className="h-6 bg-gradient-to-r from-[#0078d4] to-[#00a3d1] text-white flex items-center px-2 text-xs select-none">
         <div className="flex gap-4">
           <span>C++17</span>
           <span>Ln {cursorStats.line}, Col {cursorStats.col}</span>
