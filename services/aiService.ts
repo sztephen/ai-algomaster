@@ -1,7 +1,7 @@
 import { Problem, RunSummary } from "../types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-3-pro-preview";
+const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
 const EXECUTION_SIM_MODEL = "google/gemini-3-flash-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 
