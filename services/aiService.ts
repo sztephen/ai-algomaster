@@ -4,6 +4,7 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
 const EXECUTION_SIM_MODEL = "google/gemini-3-flash-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
+const OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
 
 const getApiKey = (): string => {
     // Check localStorage first (user-entered key), then fall back to env var
@@ -52,6 +53,66 @@ interface OpenRouterStreamChunk {
     }>;
 }
 
+const toErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message) return error.message;
+    return String(error);
+};
+
+const normalizeOpenRouterError = (error: unknown): Error => {
+    if (error instanceof DOMException && error.name === "AbortError") {
+        return new Error(
+            `OpenRouter request timed out after ${Math.round(OPENROUTER_REQUEST_TIMEOUT_MS / 1000)} seconds. Please try again.`
+        );
+    }
+
+    if (error instanceof TypeError) {
+        return new Error(
+            "Could not reach OpenRouter. Check your internet connection and disable blocking browser extensions, then retry."
+        );
+    }
+
+    if (error instanceof Error) return error;
+    return new Error(toErrorMessage(error));
+};
+
+const runOpenRouterRequest = async <T>(
+    body: Record<string, unknown>,
+    parseResponse: (response: Response) => Promise<T>
+): Promise<T> => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        throw new Error("OpenRouter API key not configured. Please enter your API key on the home screen.");
+    }
+
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), OPENROUTER_REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(OPENROUTER_API_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": window.location.origin,
+                "X-Title": "AI AlgoMaster"
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+        }
+
+        return await parseResponse(response);
+    } catch (error) {
+        throw normalizeOpenRouterError(error);
+    } finally {
+        globalThis.clearTimeout(timeoutId);
+    }
+};
+
 export interface AISimulatedCaseResult {
     stdout: string;
     runtimeError?: string;
@@ -92,34 +153,18 @@ const callOpenRouter = async (
         temperature
     } = options;
 
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        throw new Error("OpenRouter API key not configured. Please enter your API key on the home screen.");
-    }
-
-    const response = await fetch(OPENROUTER_API_URL, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "AI AlgoMaster"
-        },
-        body: JSON.stringify({
+    return runOpenRouterRequest(
+        {
             model,
             messages,
             ...(typeof temperature === 'number' && { temperature }),
             ...(jsonMode && { response_format: { type: "json_object" } })
-        })
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-    }
-
-    const data: OpenRouterResponse = await response.json();
-    return data.choices[0]?.message?.content || "";
+        },
+        async (response) => {
+            const data: OpenRouterResponse = await response.json();
+            return data.choices[0]?.message?.content || "";
+        }
+    );
 };
 
 const callOpenRouterStream = async (
@@ -132,95 +177,79 @@ const callOpenRouterStream = async (
         temperature
     } = options;
 
-    const apiKey = getApiKey();
-    if (!apiKey) {
-        throw new Error("OpenRouter API key not configured. Please enter your API key on the home screen.");
-    }
-
-    const response = await fetch(OPENROUTER_API_URL, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "AI AlgoMaster"
-        },
-        body: JSON.stringify({
+    return runOpenRouterRequest(
+        {
             model,
             messages,
             stream: true,
             ...(typeof temperature === 'number' && { temperature })
-        })
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-    }
-
-    if (!response.body) {
-        const fallback = await callOpenRouter(messages, options);
-        if (fallback) onToken(fallback);
-        return fallback;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-    let fullText = "";
-    let streamDone = false;
-
-    const consumeLine = (line: string) => {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith("data:")) return;
-
-        const payload = trimmed.slice(5).trim();
-        if (!payload) return;
-
-        if (payload === "[DONE]") {
-            streamDone = true;
-            return;
-        }
-
-        try {
-            const parsed: OpenRouterStreamChunk = JSON.parse(payload);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (typeof delta === "string" && delta.length > 0) {
-                fullText += delta;
-                onToken(delta);
+        },
+        async (response) => {
+            if (!response.body) {
+                const fallback = await callOpenRouter(messages, options);
+                if (fallback) onToken(fallback);
+                return fallback;
             }
-        } catch {
-            // Ignore malformed chunk lines and continue streaming.
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+            let fullText = "";
+            let streamDone = false;
+
+            const consumeLine = (line: string) => {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith("data:")) return;
+
+                const payload = trimmed.slice(5).trim();
+                if (!payload) return;
+
+                if (payload === "[DONE]") {
+                    streamDone = true;
+                    return;
+                }
+
+                try {
+                    const parsed: OpenRouterStreamChunk = JSON.parse(payload);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (typeof delta === "string" && delta.length > 0) {
+                        fullText += delta;
+                        onToken(delta);
+                    }
+                } catch {
+                    // Ignore malformed chunk lines and continue streaming.
+                }
+            };
+
+            while (!streamDone) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                let newlineIndex = buffer.indexOf("\n");
+                while (newlineIndex !== -1) {
+                    const line = buffer.slice(0, newlineIndex);
+                    buffer = buffer.slice(newlineIndex + 1);
+                    consumeLine(line);
+                    if (streamDone) break;
+                    newlineIndex = buffer.indexOf("\n");
+                }
+            }
+
+            buffer += decoder.decode();
+            if (buffer.length > 0) {
+                consumeLine(buffer);
+            }
+
+            if (!fullText.trim()) {
+                const fallback = await callOpenRouter(messages, options);
+                if (fallback) onToken(fallback);
+                return fallback;
+            }
+
+            return fullText;
         }
-    };
-
-    while (!streamDone) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        let newlineIndex = buffer.indexOf("\n");
-        while (newlineIndex !== -1) {
-            const line = buffer.slice(0, newlineIndex);
-            buffer = buffer.slice(newlineIndex + 1);
-            consumeLine(line);
-            if (streamDone) break;
-            newlineIndex = buffer.indexOf("\n");
-        }
-    }
-
-    buffer += decoder.decode();
-    if (buffer.length > 0) {
-        consumeLine(buffer);
-    }
-
-    if (!fullText.trim()) {
-        const fallback = await callOpenRouter(messages, options);
-        if (fallback) onToken(fallback);
-        return fallback;
-    }
-
-    return fullText;
+    );
 };
 
 export const simulateCppExecution = async (code: string, stdinCases: string[]): Promise<AISimulatedExecution> => {

@@ -273,7 +273,8 @@ const App: React.FC = () => {
       setSelectedDifficultyTab('All');
       setState(AppState.SELECTING_PROBLEM);
     } catch (e: any) {
-      setError("Generation Failed: " + e.message);
+      const message = e?.message || String(e) || "Unknown error";
+      setError("Generation Failed: " + message);
       setState(AppState.IDLE);
     }
   };
