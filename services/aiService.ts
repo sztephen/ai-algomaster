@@ -4,7 +4,8 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
 const EXECUTION_SIM_MODEL = "google/gemini-3-flash-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
-const OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
+const DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
+const GENERATE_PROBLEMS_TIMEOUT_MS = 180_000;
 
 const getApiKey = (): string => {
     // Check localStorage first (user-entered key), then fall back to env var
@@ -42,6 +43,7 @@ interface CallOpenRouterOptions {
     jsonMode?: boolean;
     model?: string;
     temperature?: number;
+    timeoutMs?: number;
 }
 
 interface OpenRouterStreamChunk {
@@ -58,10 +60,10 @@ const toErrorMessage = (error: unknown): string => {
     return String(error);
 };
 
-const normalizeOpenRouterError = (error: unknown): Error => {
+const normalizeOpenRouterError = (error: unknown, timeoutMs: number): Error => {
     if (error instanceof DOMException && error.name === "AbortError") {
         return new Error(
-            `OpenRouter request timed out after ${Math.round(OPENROUTER_REQUEST_TIMEOUT_MS / 1000)} seconds. Please try again.`
+            `OpenRouter request timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`
         );
     }
 
@@ -77,7 +79,8 @@ const normalizeOpenRouterError = (error: unknown): Error => {
 
 const runOpenRouterRequest = async <T>(
     body: Record<string, unknown>,
-    parseResponse: (response: Response) => Promise<T>
+    parseResponse: (response: Response) => Promise<T>,
+    timeoutMs: number = DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS
 ): Promise<T> => {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -85,7 +88,7 @@ const runOpenRouterRequest = async <T>(
     }
 
     const controller = new AbortController();
-    const timeoutId = globalThis.setTimeout(() => controller.abort(), OPENROUTER_REQUEST_TIMEOUT_MS);
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
         const response = await fetch(OPENROUTER_API_URL, {
@@ -107,7 +110,7 @@ const runOpenRouterRequest = async <T>(
 
         return await parseResponse(response);
     } catch (error) {
-        throw normalizeOpenRouterError(error);
+        throw normalizeOpenRouterError(error, timeoutMs);
     } finally {
         globalThis.clearTimeout(timeoutId);
     }
@@ -150,7 +153,8 @@ const callOpenRouter = async (
     const {
         jsonMode = false,
         model = DEFAULT_MODEL,
-        temperature
+        temperature,
+        timeoutMs
     } = options;
 
     return runOpenRouterRequest(
@@ -163,7 +167,8 @@ const callOpenRouter = async (
         async (response) => {
             const data: OpenRouterResponse = await response.json();
             return data.choices[0]?.message?.content || "";
-        }
+        },
+        timeoutMs
     );
 };
 
@@ -174,7 +179,8 @@ const callOpenRouterStream = async (
 ): Promise<string> => {
     const {
         model = DEFAULT_MODEL,
-        temperature
+        temperature,
+        timeoutMs
     } = options;
 
     return runOpenRouterRequest(
@@ -248,7 +254,8 @@ const callOpenRouterStream = async (
             }
 
             return fullText;
-        }
+        },
+        timeoutMs
     );
 };
 
@@ -378,7 +385,11 @@ Output strictly in this JSON format:
         const responseText = await callOpenRouter([
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessage }
-        ], { jsonMode: true });
+        ], {
+            jsonMode: true,
+            model: DEFAULT_MODEL,
+            timeoutMs: GENERATE_PROBLEMS_TIMEOUT_MS
+        });
 
         // Extract JSON from response
         let jsonStr = responseText;
