@@ -30,6 +30,10 @@ const App: React.FC = () => {
   const [hintConversation, setHintConversation] = useState<HintMessage[]>([]);
   const [isLoadingHint, setIsLoadingHint] = useState<boolean>(false);
 
+  // Generation streaming text
+  const [generationStreamText, setGenerationStreamText] = useState<string>("");
+  const generationStreamRef = useRef<HTMLDivElement>(null);
+
   // Inputs
   const [userPrompt, setUserPrompt] = useState("Give me 3 easy C++ problems about array manipulation.");
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +102,13 @@ const App: React.FC = () => {
       localStorage.removeItem(GLOBAL_STATE_KEY);
     }
   }, [generatedProblems, selectedProblemIndex, isPresetMode, userCode, state]);
+
+  // Auto-scroll generation stream
+  useEffect(() => {
+    if (generationStreamRef.current) {
+      generationStreamRef.current.scrollTop = generationStreamRef.current.scrollHeight;
+    }
+  }, [generationStreamText]);
 
   useEffect(() => {
     if (selectedDifficultyTab === 'All') return;
@@ -266,8 +277,11 @@ const App: React.FC = () => {
     setState(AppState.GENERATING_PROBLEM);
     setError(null);
     setGeneratedProblems([]);
+    setGenerationStreamText("");
     try {
-      const problems = await generateProblems(userPrompt);
+      const problems = await generateProblems(userPrompt, (token) => {
+        setGenerationStreamText(prev => prev + token);
+      });
       if (problems.length === 0) throw new Error("No problems generated. Try a different prompt.");
       setGeneratedProblems(problems);
       setSelectedDifficultyTab('All');
@@ -648,17 +662,34 @@ const App: React.FC = () => {
 
   if (state === AppState.GENERATING_PROBLEM) {
     return (
-      <div className="h-full flex flex-col items-center justify-center modern-ambient text-white space-y-8 animate-fade-in">
-        <div className="relative w-32 h-32 animate-fade-in-up">
-          <div className="absolute inset-0 border-4 border-[#0078d4]/30 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-[#00bcf2] rounded-full border-t-transparent animate-spin" style={{ animationDuration: '1.4s' }}></div>
-          <div className="absolute inset-0 flex items-center justify-center text-[#0078d4] text-3xl font-bold">
-            C++
+      <div className="h-full flex modern-ambient text-white animate-fade-in overflow-hidden">
+        {/* Left side - status */}
+        <div className="flex flex-col items-center justify-center flex-1 p-8">
+          <div className="relative w-28 h-28 mb-8 animate-fade-in-up">
+            <div className="absolute inset-0 border-4 border-[#0078d4]/30 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-[#00bcf2] rounded-full border-t-transparent animate-spin" style={{ animationDuration: '1.4s' }}></div>
+            <div className="absolute inset-0 flex items-center justify-center text-[#0078d4] text-3xl font-bold">
+              C++
+            </div>
           </div>
+          <h2 className="text-3xl font-bold text-[#0078d4] ui-title animate-fade-in-up mb-3">Crafting Challenges...</h2>
+          <p className="text-gray-500 text-base max-w-xs text-center">AI is generating your C++ problems. This usually takes 30-60 seconds.</p>
         </div>
-        <div className="text-center max-w-md">
-          <h2 className="text-3xl font-bold text-[#0078d4] ui-title animate-fade-in-up">Crafting Challenges...</h2>
-          <p className="text-gray-500 mt-4 text-lg">AI is interpreting your request and designing C++ solutions.</p>
+
+        {/* Right side - streaming AI output */}
+        <div className="w-[480px] border-l border-[#333] bg-[#1a1f28]/80 flex flex-col animate-fade-in">
+          <div className="px-4 py-3 border-b border-[#333] flex items-center gap-2 shrink-0">
+            <div className="w-2 h-2 rounded-full bg-[#00bcf2] animate-pulse"></div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">AI Output</span>
+          </div>
+          <div
+            ref={generationStreamRef}
+            className="flex-1 overflow-y-auto p-4 code-font text-xs text-gray-400 leading-relaxed whitespace-pre-wrap break-all generation-stream"
+          >
+            {generationStreamText || (
+              <span className="text-gray-600 italic">Waiting for response...</span>
+            )}
+          </div>
         </div>
       </div>
     );

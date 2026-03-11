@@ -2,7 +2,7 @@ import { Problem, RunSummary } from "../types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
-const EXECUTION_SIM_MODEL = "google/gemini-3-flash-preview";
+const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 const DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
 const GENERATE_PROBLEMS_TIMEOUT_MS = 180_000;
@@ -345,8 +345,11 @@ Required output format:
     return { compileError, caseResults };
 };
 
-export const generateProblems = async (userPrompt: string): Promise<Problem[]> => {
-    const systemPrompt = `You are a C++ coding interview generator. Output ONLY valid JSON, no markdown.`;
+export const generateProblems = async (
+    userPrompt: string,
+    onToken?: (token: string) => void
+): Promise<Problem[]> => {
+    const systemPrompt = `You are a C++ coding interview generator. Output ONLY valid JSON, no markdown fences.`;
 
     const userMessage = `
 User Request: "${userPrompt}"
@@ -360,12 +363,12 @@ For EACH problem, provide:
 3. Exactly 25 diverse test cases covering edge cases.
 4. Deterministic solutions.
 
-CRITICAL: 
+CRITICAL:
 - 'input_json' must be valid JSON arguments. Note: The system converts arrays to "Length Elements..." in stdin automatically.
 - 'expected_json' must be valid JSON return value.
 - Use standard C++ types.
+- Output ONLY the JSON object below, nothing else.
 
-Output strictly in this JSON format:
 {
   "problems": [
     {
@@ -381,15 +384,28 @@ Output strictly in this JSON format:
   ]
 }`;
 
+    const messages: OpenRouterMessage[] = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage }
+    ];
+
     try {
-        const responseText = await callOpenRouter([
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage }
-        ], {
-            jsonMode: true,
-            model: DEFAULT_MODEL,
-            timeoutMs: GENERATE_PROBLEMS_TIMEOUT_MS
-        });
+        let responseText: string;
+
+        if (onToken) {
+            // Use streaming so the UI can show progress
+            responseText = await callOpenRouterStream(
+                messages,
+                onToken,
+                { model: DEFAULT_MODEL, timeoutMs: GENERATE_PROBLEMS_TIMEOUT_MS }
+            );
+        } else {
+            responseText = await callOpenRouter(messages, {
+                jsonMode: true,
+                model: DEFAULT_MODEL,
+                timeoutMs: GENERATE_PROBLEMS_TIMEOUT_MS
+            });
+        }
 
         // Extract JSON from response
         let jsonStr = responseText;
@@ -397,9 +413,6 @@ Output strictly in this JSON format:
         // 1. Try to extract from markdown code block first
         const codeBlockMatch = responseText.match(/```[\s\S]*?```/);
         if (codeBlockMatch) {
-            // Remove the backticks and any potential language tag/whitespace at start/end
-            // We don't rely on regex groups for language tags as they can be messy.
-            // Just take the content and then look for braces.
             const blockContent = codeBlockMatch[0].replace(/^```(?:[\w+\-.]*)?/, '').replace(/```$/, '');
             jsonStr = blockContent;
         }
