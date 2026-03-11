@@ -5,7 +5,7 @@ const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
 const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 const DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
-const GENERATE_PROBLEMS_TIMEOUT_MS = 180_000;
+const GENERATE_PROBLEMS_TIMEOUT_MS = 600_000;
 
 const getApiKey = (): string => {
     // Check localStorage first (user-entered key), then fall back to env var
