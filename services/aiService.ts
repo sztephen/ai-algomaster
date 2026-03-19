@@ -2,7 +2,7 @@ import { Problem, RunSummary } from "../types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
-const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-preview";
+const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-lite-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 const DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
 const GENERATE_PROBLEMS_TIMEOUT_MS = 600_000;
