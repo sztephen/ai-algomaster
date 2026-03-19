@@ -1,6 +1,6 @@
 import { getRunnerApiUrl } from "../constants";
 import { TestCase, RunSummary, TestResult } from "../types";
-import { hasApiKey, simulateCppExecution } from "./aiService";
+import { hasApiKey, simulateCppExecution, AISimulatedCaseResult } from "./aiService";
 
 // Helper to format input arguments into a string stream for stdin
 const serializeInputArg = (arg: any): string => {
@@ -47,24 +47,72 @@ const runCppCodeWithAISimulation = async (
     const stdinCases = testCases.map(tc => formatInput(tc.input));
     const expectedTokenSets = testCases.map(tc => normalizeOutput(formatExpected(tc.expected)));
 
-    const simulated = await simulateCppExecution(code, stdinCases);
+    const BATCH_THRESHOLD = 10;
+    let allCaseResults: AISimulatedCaseResult[];
 
-    if (simulated.compileError) {
-        return {
-            total: testCases.length,
-            passed: 0,
-            results: [],
-            error: `Compilation Error (AI Simulation):\n${simulated.compileError}`
-        };
+    if (stdinCases.length >= BATCH_THRESHOLD) {
+        // Split test cases into 2 batches for better accuracy
+        const mid = Math.ceil(stdinCases.length / 2);
+        const batch1 = stdinCases.slice(0, mid);
+        const batch2 = stdinCases.slice(mid);
+
+        const [sim1, sim2] = await Promise.all([
+            simulateCppExecution(code, batch1),
+            simulateCppExecution(code, batch2)
+        ]);
+
+        // If either batch reports a compile error, return it
+        if (sim1.compileError) {
+            return {
+                total: testCases.length,
+                passed: 0,
+                results: [],
+                error: `Compilation Error (AI Simulation):\n${sim1.compileError}`
+            };
+        }
+        if (sim2.compileError) {
+            return {
+                total: testCases.length,
+                passed: 0,
+                results: [],
+                error: `Compilation Error (AI Simulation):\n${sim2.compileError}`
+            };
+        }
+
+        if (sim1.caseResults.length !== batch1.length) {
+            throw new Error(
+                `AI simulation batch 1 returned ${sim1.caseResults.length} test outputs for ${batch1.length} test cases.`
+            );
+        }
+        if (sim2.caseResults.length !== batch2.length) {
+            throw new Error(
+                `AI simulation batch 2 returned ${sim2.caseResults.length} test outputs for ${batch2.length} test cases.`
+            );
+        }
+
+        allCaseResults = [...sim1.caseResults, ...sim2.caseResults];
+    } else {
+        const simulated = await simulateCppExecution(code, stdinCases);
+
+        if (simulated.compileError) {
+            return {
+                total: testCases.length,
+                passed: 0,
+                results: [],
+                error: `Compilation Error (AI Simulation):\n${simulated.compileError}`
+            };
+        }
+
+        if (simulated.caseResults.length !== testCases.length) {
+            throw new Error(
+                `AI simulation returned ${simulated.caseResults.length} test outputs for ${testCases.length} test cases.`
+            );
+        }
+
+        allCaseResults = simulated.caseResults;
     }
 
-    if (simulated.caseResults.length !== testCases.length) {
-        throw new Error(
-            `AI simulation returned ${simulated.caseResults.length} test outputs for ${testCases.length} test cases.`
-        );
-    }
-
-    const results: TestResult[] = simulated.caseResults.map((caseResult, idx) => {
+    const results: TestResult[] = allCaseResults.map((caseResult, idx) => {
         const expectedTokens = expectedTokenSets[idx];
         const stdin = stdinCases[idx];
 
