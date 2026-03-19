@@ -2,7 +2,7 @@ import { Problem, RunSummary } from "../types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-3.1-pro-preview";
-const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-lite-preview";
+const EXECUTION_SIM_MODEL = "google/gemini-3.1-flash-preview";
 const API_KEY_STORAGE_KEY = 'algomaster_openrouter_key';
 const DEFAULT_OPENROUTER_REQUEST_TIMEOUT_MS = 45_000;
 const GENERATE_PROBLEMS_TIMEOUT_MS = 600_000;
@@ -261,7 +261,8 @@ const callOpenRouterStream = async (
 
 export const simulateCppExecution = async (code: string, stdinCases: string[]): Promise<AISimulatedExecution> => {
     const systemPrompt = `You are a strict and deterministic C++17 compiler/runtime simulator.
-Return ONLY valid JSON with no markdown and no extra keys.`;
+Return ONLY valid JSON with no markdown and no extra keys.
+You MUST trace through the code line-by-line for each test case to get accurate results.`;
 
     const userPrompt = `
 Simulate this C++ code against each stdin case in order.
@@ -282,19 +283,26 @@ Rules:
    - Any other compile-time error
 2. If code does not compile, return "compile_error" (string) and set "case_results" to [].
 3. If code compiles, set "compile_error" to null.
-4. For each stdin case, return one object in "case_results" with:
+4. For each stdin case, you MUST mentally execute the code line-by-line:
+   - Track every variable's value after each assignment
+   - Pay careful attention to compound assignment operators (+=, -=, etc.) that MODIFY the variable
+   - For example: "int overlap = b -= c;" first sets b = b - c, THEN sets overlap = b (the new value)
+   - Track all branch conditions using the CURRENT variable values
+   - Write your step-by-step trace in the "trace" field before producing "stdout"
+5. For each stdin case, return one object in "case_results" with:
+   - "trace": a step-by-step variable trace showing how you executed the code (string)
    - "stdout": exact output text from stdout (string, can be empty)
    - "runtime_error": null when none, otherwise a short error message
-5. Simulate stdin/stdout behavior faithfully (token parsing like std::cin >> by whitespace).
-6. Keep case_results length exactly equal to stdin_cases_json length when compile_error is null.
-7. Be conservative: if uncertain about a case, prefer runtime_error over invented stdout.
-8. No explanations. JSON only.
+6. Simulate stdin/stdout behavior faithfully (token parsing like std::cin >> by whitespace).
+7. Keep case_results length exactly equal to stdin_cases_json length when compile_error is null.
+8. Be conservative: if uncertain about a case, prefer runtime_error over invented stdout.
+9. The trace field is critical — use it to show your work before deciding stdout.
 
 Required output format:
 {
   "compile_error": null,
   "case_results": [
-    { "stdout": "text", "runtime_error": null }
+    { "trace": "n=4, a=5, b=15... step by step", "stdout": "text", "runtime_error": null }
   ]
 }`;
 
