@@ -2,7 +2,7 @@
 
 AI AlgoMaster is a modern, AI-powered platform for practicing C++ algorithm challenges. Whether you're preparing for technical interviews or sharpening your problem-solving skills, AI AlgoMaster provides tailored challenges, real-time code execution, and intelligent AI hints.
 
-![AI AlgoMaster Banner](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)
+
 
 ## ✨ Features
 
