@@ -1,33 +1,62 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AI AlgoMaster 🚀
 
-# Run and deploy your AI Studio app
+AI AlgoMaster is a modern, AI-powered platform for practicing C++ algorithm challenges. Whether you're preparing for technical interviews or sharpening your problem-solving skills, AI AlgoMaster provides tailored challenges, real-time code execution, and intelligent AI hints.
 
-This contains everything you need to run your app locally.
+![AI AlgoMaster Banner](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1en4Q6d0OJZ4QOvILfZtuW2NADLPTsbxC
+## ✨ Features
 
-## Run Locally
+- **AI Challenge Generation**: Describe the type of problems you want (e.g., "5 hard dynamic programming questions"), and AI will craft them for you.
+- **Preset Curriculum**: A curated set of C++ problems ranging from Basics to Hard.
+- **Intelligent Hints**: Get stuck? Ask the AI for a hint without giving away the full solution.
+- **Live Code Execution**: Run your C++ code directly in the browser using the Piston API or AI simulation.
+- **Progress Tracking**: Automatically saves your progress locally. Export and import your data anytime.
+- **Modern UI**: A sleek, responsive, and ambient dark-themed interface designed for focus.
 
-**Prerequisites:**  Node.js
+## 🚀 Getting Started
 
+### Prerequisites
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Node.js** (v18 or higher recommended)
+- **OpenRouter API Key** (for AI features)
 
-## C++ Test Execution
+### Installation
 
-As of **February 15, 2026**, the public Piston API endpoint is whitelist-only.  
-You now have two ways to run C++ test cases:
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/sztephen/ai-algomaster.git
+   cd ai-algomaster
+   ```
 
-- AI simulation (Gemini via OpenRouter): add your OpenRouter key in-app
-- Direct execution API (Piston-compatible): configure your own endpoint
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-- In-app: Home screen -> `Code Runner API URL`
-- Or via env: set `VITE_PISTON_API_URL` in `.env.local`
+3. **Configure Environment**:
+   Create a `.env.local` file in the root directory and add your API keys:
+   ```env
+   VITE_OPENROUTER_API_KEY=your_openrouter_key_here
+   VITE_PISTON_API_URL=https://emkc.org/api/v2/piston/execute
+   ```
+   *(Note: You can also set these directly in the application UI)*
 
-Example endpoint: `http://localhost:2000/api/v2/piston/execute`
+4. **Run the app**:
+   ```bash
+   npm run dev
+   ```
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, TypeScript, Vite
+- **Styling**: Vanilla CSS (Modern UI Design)
+- **AI**: Google Gemini (via OpenRouter)
+- **Code Execution**: Piston API
+
+## 📝 License
+
+Private / All Rights Reserved.
+
+---
+
+*Made with ❤️ by Stephen Sun*
